@@ -1,37 +1,29 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/sidebar';
+import StatsCard from '../../components/StatsCard';
+import UserModal from '../../components/UserModal';
+import TaskModal from '../../components/TaskModal';
 import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { selectUser, selectIsAdmin } from '../../store/selectors/authSelectors';
+import { selectAllUsers } from '../../store/selectors/usersSelectors';
+import { selectAllTasks, selectUserTasks } from '../../store/selectors/tasksSelectors';
 import { logout } from '../../store/slices/authSlice';
+import { addUser, updateUser } from '../../store/slices/usersSlice';
+import { addTask, updateTask, updateTaskStatus } from '../../store/slices/tasksSlice';
 import useNotificationSystem from '../../components/notificationPopup';
 import { 
   HiCamera, 
   HiUser, 
   HiCheckCircle, 
-  HiClock, 
   HiCog, 
-  HiUsers, 
-  HiChartBar, 
-  HiOfficeBuilding, 
   HiExclamationCircle,
-  HiX,
   HiPlus,
   HiDownload,
-  HiPencil,
-  HiClipboardCheck,
-  HiShieldCheck
+  HiEye
 } from 'react-icons/hi';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-  image?: string;
-  createdAt: string;
-}
+import type { User } from '../../store/slices/usersSlice';
+import type { Task } from '../../store/slices/tasksSlice';
 const Dashboard: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
@@ -42,8 +34,11 @@ const Dashboard: React.FC = () => {
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectUser);
   const isAdminUser = useAppSelector(selectIsAdmin);
+  
+  const users = useAppSelector(selectAllUsers);
+  const tasks = useAppSelector(selectAllTasks);
+  const userTasks = useAppSelector(selectUserTasks(currentUser?.id || 0));
 
-  // Profile form data state - moved to top level to avoid hook order issues
   const [profileFormData, setProfileFormData] = useState({
     firstName: currentUser?.firstName || '',
     lastName: currentUser?.lastName || '',
@@ -53,7 +48,6 @@ const Dashboard: React.FC = () => {
     newImage: null as File | null
   });
 
-  // Update profile form data when currentUser changes
   React.useEffect(() => {
     if (currentUser) {
       setProfileFormData({
@@ -67,7 +61,6 @@ const Dashboard: React.FC = () => {
     }
   }, [currentUser]);
 
-  // Profile form handlers
   const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setProfileFormData(prev => ({
@@ -79,14 +72,12 @@ const Dashboard: React.FC = () => {
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
       if (!allowedTypes.includes(file.type)) {
         showError('Invalid File Type', 'Please upload JPG or PNG images only.');
         return;
       }
 
-      // Validate file size (5MB for profile images)
       if (file.size > 5 * 1024 * 1024) {
         showError('File Too Large', 'Image size must be less than 5MB.');
         return;
@@ -105,16 +96,12 @@ const Dashboard: React.FC = () => {
     try {
       let newAvatarUrl = profileFormData.avatar;
       
-      // If user selected a new image, resize and convert it
       if (profileFormData.newImage) {
         newAvatarUrl = await resizeImage(profileFormData.newImage);
       }
 
-      // Here you would typically update the user profile in your backend
-      // For now, we'll just show a success message
       showSuccess('Profile Updated!', 'Your profile has been updated successfully.');
       
-      // Update the avatar in the form data
       setProfileFormData(prev => ({
         ...prev,
         avatar: newAvatarUrl,
@@ -125,24 +112,18 @@ const Dashboard: React.FC = () => {
       showError('Error', 'Failed to update profile. Please try again.');
     }
   };
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+1 234 567 8900',
-      role: 'admin',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '+1 234 567 8901',
-      role: 'read',
-      createdAt: '2024-01-16'
-    }
-  ]);
+  
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  
+  const [taskFormData, setTaskFormData] = useState({
+    title: '',
+    description: '',
+    assignedTo: '',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    dueDate: ''
+  });
   
   const {
     notifications,
@@ -160,7 +141,6 @@ const Dashboard: React.FC = () => {
     image: null as File | null
   });
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const profileImageInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -174,14 +154,12 @@ const Dashboard: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         showError('Invalid File Type', 'Please upload JPG, PNG, PDF, or DOCX files only.');
         return;
       }
 
-      // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
         showError('File Too Large', 'File size must be less than 10MB.');
         return;
@@ -204,16 +182,13 @@ const Dashboard: React.FC = () => {
         canvas.width = 200;
         canvas.height = 200;
         
-        // Calculate aspect ratio and crop to center
         const aspectRatio = img.width / img.height;
         let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
         
         if (aspectRatio > 1) {
-          // Wide image - crop width
           sourceWidth = img.height;
           sourceX = (img.width - sourceWidth) / 2;
         } else {
-          // Tall image - crop height
           sourceHeight = img.width;
           sourceY = (img.height - sourceHeight) / 2;
         }
@@ -251,11 +226,11 @@ const Dashboard: React.FC = () => {
       };
 
       if (selectedUser) {
-        setUsers(prev => prev.map(user => user.id === selectedUser.id ? newUser : user));
+        dispatch(updateUser(newUser));
         showSuccess('User Updated!', 'User information has been updated successfully.');
         setShowEditUserModal(false);
       } else {
-        setUsers(prev => [...prev, newUser]);
+        dispatch(addUser(newUser));
         showSuccess('User Added!', 'New user has been added successfully.');
         setShowAddUserModal(false);
       }
@@ -277,6 +252,90 @@ const Dashboard: React.FC = () => {
       image: null
     });
     setShowEditUserModal(true);
+  };
+
+  const canCreateTasks = () => {
+    return currentUser?.role === 'admin' || 
+           currentUser?.permissions?.includes('Write') ||
+           currentUser?.permissions?.includes('Admin');
+  };
+
+  const handleTaskInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setTaskFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleTaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!taskFormData.title || !taskFormData.description || !taskFormData.assignedTo || !taskFormData.dueDate) {
+      showError('Validation Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    try {
+      const assignedUser = users.find(u => u.id === parseInt(taskFormData.assignedTo));
+      if (!assignedUser) {
+        showError('Error', 'Selected user not found.');
+        return;
+      }
+
+      const newTask: Task = {
+        id: selectedTask ? selectedTask.id : Date.now(),
+        title: taskFormData.title,
+        description: taskFormData.description,
+        assignedTo: parseInt(taskFormData.assignedTo),
+        assignedBy: currentUser?.id || 1,
+        assignedToName: assignedUser.name,
+        assignedByName: currentUser?.firstName + ' ' + currentUser?.lastName || 'Unknown',
+        status: selectedTask ? selectedTask.status : 'pending',
+        priority: taskFormData.priority,
+        dueDate: taskFormData.dueDate,
+        createdAt: selectedTask ? selectedTask.createdAt : new Date().toISOString().split('T')[0]
+      };
+
+      if (selectedTask) {
+        dispatch(updateTask(newTask));
+        showSuccess('Task Updated!', 'Task has been updated successfully.');
+        setShowEditTaskModal(false);
+      } else {
+        dispatch(addTask(newTask));
+        showSuccess('Task Created!', 'New task has been created and assigned successfully.');
+        setShowAddTaskModal(false);
+      }
+
+      setTaskFormData({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
+      setSelectedTask(null);
+    } catch (error) {
+      showError('Error', 'Something went wrong. Please try again.');
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setSelectedTask(task);
+    setTaskFormData({
+      title: task.title,
+      description: task.description,
+      assignedTo: task.assignedTo.toString(),
+      priority: task.priority,
+      dueDate: task.dueDate
+    });
+    setShowEditTaskModal(true);
+  };
+
+  const handleTaskStatusChange = (taskId: number, newStatus: 'pending' | 'in-progress' | 'completed') => {
+    dispatch(updateTaskStatus({ id: taskId, status: newStatus }));
+    showSuccess('Status Updated!', 'Task status has been updated successfully.');
+  };
+
+  const closeTaskModal = () => {
+    setShowAddTaskModal(false);
+    setShowEditTaskModal(false);
+    setSelectedTask(null);
+    setTaskFormData({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
   };
 
   const exportToCSV = () => {
@@ -331,8 +390,8 @@ const Dashboard: React.FC = () => {
         return isAdminUser ? renderUsersView() : renderAccessDenied();
       case 'profile':
         return renderProfileView();
-      case 'analytics':
-        return isAdminUser ? renderAnalyticsView() : renderAccessDenied();
+      case 'tasks':
+        return renderTasksView();
       case 'settings':
         return renderSettingsView();
       default:
@@ -353,10 +412,8 @@ const Dashboard: React.FC = () => {
   const renderProfileView = () => {
     return (
       <div className="w-full max-w-none overflow-y-auto max-h-[calc(100vh-8rem)] custom-scrollbar">
-        {/* First Row - Profile Picture and Info */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
           <div className="flex items-start space-x-8">
-            {/* Left Side - Large Profile Image */}
             <div className="flex-shrink-0">
               <div className="relative">
                 {profileFormData.newImage ? (
@@ -399,7 +456,6 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Side - User Information */}
             <div className="flex-1">
               <div className="mb-6">
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -418,54 +474,23 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Account Statistics */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6">
-                  <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-blue-500">
-                      <HiUser className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-blue-800">Member Since</p>
-                      <p className="text-lg font-bold text-blue-900">
-                        {new Date(currentUser?.createdAt || '').toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'short' 
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <StatsCard
+                  title="Permissions"
+                  value={currentUser?.permissions.length || 0}
+                  variant="green"
+                />
 
-                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
-                  <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-green-500">
-                      <HiShieldCheck className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-green-800">Permissions</p>
-                      <p className="text-lg font-bold text-green-900">{currentUser?.permissions.length || 0}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-6">
-                  <div className="flex items-center">
-                    <div className="p-3 rounded-full bg-purple-500">
-                      <HiClock className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-purple-800">Last Login</p>
-                      <p className="text-lg font-bold text-purple-900">Today</p>
-                    </div>
-                  </div>
-                </div>
+                <StatsCard
+                  title="Last Login"
+                  value="Today"
+                  variant="purple"
+                />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Second Row - Update Profile Form */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="mb-6">
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Update Profile Information</h2>
@@ -473,7 +498,6 @@ const Dashboard: React.FC = () => {
           </div>
 
           <form onSubmit={handleProfileSubmit} className="space-y-8">
-            {/* Personal Information Section */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
                 Personal Information
@@ -530,7 +554,6 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Contact Information Section */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
                 Contact Information
@@ -569,7 +592,6 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="pt-6 border-t border-gray-200">
               <div className="flex space-x-4">
                 <button
@@ -581,7 +603,6 @@ const Dashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    // Reset form to original values
                     if (currentUser) {
                       setProfileFormData({
                         firstName: currentUser.firstName || '',
@@ -606,48 +627,44 @@ const Dashboard: React.FC = () => {
   };
 
   const renderDashboardView = () => {
-    if (currentUser?.role === 'user') {
-      // User Dashboard
+    if (!isAdminUser && currentUser?.role !== 'admin') {
       return (
         <div>
-          {/* Welcome Section */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Welcome back, {currentUser.firstName}!
+              Welcome back, {currentUser?.firstName}!
             </h3>
             <p className="text-gray-600 mb-4">
               Here's a quick overview of your account and recent activity.
             </p>
           </div>
 
-          {/* User Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-50">
-                  <HiUser className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Account Status</p>
-                  <p className="text-2xl font-bold text-gray-900">Active</p>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <StatsCard
+                title="Account Status"
+                value="Active"
+                variant="blue"
+              />
             </div>
             
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-green-50">
-                  <HiCheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Permissions</p>
-                  <p className="text-2xl font-bold text-gray-900">{currentUser.permissions.length}</p>
-                </div>
-              </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <StatsCard
+                title="Permissions"
+                value={currentUser?.permissions?.length || 0}
+                variant="green"
+              />
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <StatsCard
+                title="Tasks Assigned"
+                value={tasks.filter(task => task.assignedTo === currentUser?.id).length}
+                variant="purple"
+              />
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -686,57 +703,48 @@ const Dashboard: React.FC = () => {
       );
     }
 
-    // Admin Dashboard
     return (
       <div>
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-50">
-                <HiUsers className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
+          <StatsCard
+            title="Total Users"
+            value={users.length}
+            variant="blue"
+          />
           
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-50">
-                <HiCheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Users</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-              </div>
-            </div>
-          </div>
+          <StatsCard
+            title="Active Users"
+            value={users.length}
+            variant="green"
+          />
           
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-50">
-                <HiOfficeBuilding className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Roles</p>
-                <p className="text-2xl font-bold text-gray-900">{new Set(users.map(u => u.role)).size}</p>
-              </div>
-            </div>
-          </div>
+          <StatsCard
+            title="Roles"
+            value={new Set(users.map(u => u.role)).size}
+            variant="purple"
+          />
+
+          <StatsCard
+            title="Total Tasks"
+            value={tasks.length}
+            variant="indigo"
+          />
+
+          <StatsCard
+            title="Completed Tasks"
+            value={tasks.filter(task => task.status === 'completed').length}
+            variant="green"
+          />
         </div>
 
-        {/* Welcome Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             Welcome to Admin Dashboard
           </h3>
           <p className="text-gray-600 mb-4">
-            Manage users, view analytics, and configure system settings. Select a menu item from the sidebar to get started.
+            Manage users, track tasks, update your profile, and configure system settings. Select a menu item from the sidebar to get started.
           </p>
-          <div className="flex space-x-4">
+          <div className="flex flex-wrap gap-4">
             <button
               onClick={() => setActiveView('users')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -744,10 +752,16 @@ const Dashboard: React.FC = () => {
               Manage Users
             </button>
             <button
-              onClick={() => setActiveView('analytics')}
+              onClick={() => setActiveView('tasks')}
               className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
             >
-              View Analytics
+              Manage Tasks
+            </button>
+            <button
+              onClick={() => setActiveView('profile')}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+            >
+              Update Profile
             </button>
           </div>
         </div>
@@ -757,7 +771,6 @@ const Dashboard: React.FC = () => {
 
   const renderUsersView = () => (
     <div>
-      {/* Users Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Users List</h3>
@@ -830,12 +843,132 @@ const Dashboard: React.FC = () => {
     </div>
   );
 
-  const renderAnalyticsView = () => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Analytics</h2>
-      <p className="text-gray-600">Analytics dashboard coming soon...</p>
-    </div>
-  );
+  const renderTasksView = () => {
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'completed': return 'bg-green-100 text-green-800';
+        case 'in-progress': return 'bg-blue-100 text-blue-800';
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const getPriorityColor = (priority: string) => {
+      switch (priority) {
+        case 'high': return 'bg-red-100 text-red-800';
+        case 'medium': return 'bg-yellow-100 text-yellow-800';
+        case 'low': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    return (
+      <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <StatsCard
+            title="Total Tasks"
+            value={userTasks.length}
+            variant="blue"
+          />
+          
+          <StatsCard
+            title="In Progress"
+            value={userTasks.filter(t => t.status === 'in-progress').length}
+            variant="yellow"
+          />
+          
+          <StatsCard
+            title="Completed"
+            value={userTasks.filter(t => t.status === 'completed').length}
+            variant="green"
+          />
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Tasks</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {canCreateTasks() ? 'Manage and assign tasks to team members' : 'View your assigned tasks'}
+            </p>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {userTasks.map((task) => (
+                  <tr 
+                    key={task.id} 
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                        <div className="text-sm text-gray-500 max-w-md truncate">{task.description}</div>
+                        <div className="text-xs text-gray-400 mt-1">Created by: {task.assignedByName}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{task.assignedToName}</div>
+                      <div className="text-xs text-gray-500">ID: {task.assignedTo}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleTaskStatusChange(task.id, e.target.value as any)}
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border-0 ${getStatusColor(task.status)}`}
+                        disabled={!canCreateTasks() && task.assignedTo !== currentUser?.id}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
+                        {task.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(task.dueDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {canCreateTasks() ? (
+                        <button
+                          onClick={() => handleEditTask(task)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors duration-150"
+                        >
+                          Edit
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedTask(task);
+                          }}
+                          className="text-gray-600 hover:text-gray-900 transition-colors duration-150"
+                        >
+                          <HiEye className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderSettingsView = () => (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -846,7 +979,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex min-h-screen w-full bg-gray-50">
-      {/* Sidebar */}
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -855,9 +987,7 @@ const Dashboard: React.FC = () => {
         onMenuItemClick={handleMenuItemClick}
       />
 
-      {/* Main Content */}
       <div className="flex-1 w-full overflow-hidden">
-        {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -865,14 +995,14 @@ const Dashboard: React.FC = () => {
                 {activeView === 'dashboard' && 'Dashboard'}
                 {activeView === 'users' && 'User Management'}
                 {activeView === 'profile' && 'My Profile'}
-                {activeView === 'analytics' && 'Analytics'}
+                {activeView === 'tasks' && 'Task Management'}
                 {activeView === 'settings' && 'Settings'}
               </h1>
               <p className="text-gray-600 text-sm">
                 {activeView === 'dashboard' && (currentUser?.role === 'admin' ? 'Admin Dashboard Overview' : 'Your Personal Dashboard')}
                 {activeView === 'users' && 'Manage your users and their information'}
                 {activeView === 'profile' && 'Manage your personal information'}
-                {activeView === 'analytics' && 'View detailed analytics and reports'}
+                {activeView === 'tasks' && 'Manage tasks and assignments'}
                 {activeView === 'settings' && 'Configure your application settings'}
               </p>
             </div>
@@ -894,227 +1024,47 @@ const Dashboard: React.FC = () => {
                 </button>
               </div>
             )}
+            {activeView === 'tasks' && canCreateTasks() && (
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowAddTaskModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
+                >
+                  <HiPlus className="w-4 h-4" />
+                  <span>Create Task</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
-        {/* Content */}
-        <main className={activeView === 'profile' ? 'p-3 overflow-hidden' : 'p-6'}>
+     <main className={activeView === 'profile' ? 'p-3 overflow-hidden' : 'p-6'}>
           {renderMainContent()}
         </main>
       </div>
 
-      {/* Add/Edit User Modal */}
-      {(showAddUserModal || showEditUserModal) && (
-        <div className="fixed inset-0 backdrop-blur-md bg-black/20 bg-opacity-20 flex items-center justify-center p-4 z-50">
-          <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="p-8">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="text-2xl font-semibold text-gray-900">
-                    {selectedUser ? 'Edit User Profile' : 'Add New User'}
-                  </h3>
-                  <p className="text-gray-600 mt-1">
-                    {selectedUser ? 'Update user information and profile details' : 'Create a new user account with profile information'}
-                  </p>
-                </div>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors duration-150 p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <HiX className="w-6 h-6" />
-                </button>
-              </div>
+      <UserModal
+        isOpen={showAddUserModal || showEditUserModal}
+        isEdit={showEditUserModal}
+        selectedUser={selectedUser}
+        formData={formData}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+        onInputChange={handleInputChange}
+        onFileChange={handleFileChange}
+      />
 
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Profile Image Section */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-blue-200">
-                    Profile Picture
-                  </h4>
-                  <div className="flex items-center space-x-6">
-                    <div className="relative">
-                      {(formData.image || selectedUser?.image) ? (
-                        <img 
-                          src={formData.image ? URL.createObjectURL(formData.image) : selectedUser?.image} 
-                          alt="Profile Preview" 
-                          className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
-                          <span className="text-white text-2xl font-medium">
-                            {formData.name ? formData.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
-                          </span>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
-                      >
-                        <HiCamera className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="flex-1">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        accept=".jpg,.jpeg,.png,.pdf,.docx"
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-6 py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-700 hover:border-blue-500 hover:bg-blue-50 transition-colors duration-200 font-medium"
-                      >
-                        Choose Profile Image
-                      </button>
-                      <p className="text-sm text-gray-500 mt-2">
-                        JPG, PNG, PDF, DOCX (max 10MB)
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Click the camera icon or button above to change the profile picture
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      <TaskModal
+        isOpen={showAddTaskModal || showEditTaskModal}
+        isEdit={showEditTaskModal}
+        selectedTask={selectedTask}
+        users={users}
+        formData={taskFormData}
+        onClose={closeTaskModal}
+        onSubmit={handleTaskSubmit}
+        onInputChange={handleTaskInputChange}
+      />
 
-                {/* Personal Information Section */}
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                    Personal Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                        Full Name *
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                        placeholder="Enter full name"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                        Email Address *
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                        placeholder="Enter email address"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact Information Section */}
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                    Contact Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                        placeholder="Enter phone number"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-                        Role *
-                      </label>
-                      <select
-                        id="role"
-                        name="role"
-                        value={formData.role}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-                        required
-                      >
-                        <option value="">Select Role</option>
-                        <option value="admin">Admin</option>
-                        <option value="write">Write</option>
-                        <option value="read">Read</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Account Information Section */}
-                {selectedUser && (
-                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                    <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                      Account Information
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          User ID
-                        </label>
-                        <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
-                          #{selectedUser.id}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Created Date
-                        </label>
-                        <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
-                          {new Date(selectedUser.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="pt-6 border-t border-gray-200">
-                  <div className="flex space-x-4">
-                    <button
-                      type="submit"
-                      className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
-                    >
-                      {selectedUser ? 'Update User' : 'Create User'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notification Container */}
       <NotificationContainer 
         notifications={notifications} 
         onClose={removeNotification} 

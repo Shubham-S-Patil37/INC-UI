@@ -5,7 +5,7 @@ import {
   HiChartBar, 
   HiUser, 
   HiUsers, 
-  HiChartPie, 
+  HiClipboardList, 
   HiCog, 
   HiChevronRight, 
   HiChevronLeft, 
@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onLogout, acti
     {
       id: 'profile',
       name: 'My Profile',
-      roles: ['user'], // Only available to regular users
+      roles: ['admin', 'user'], // Available to both admin and user
       icon: <HiUser className="w-5 h-5" />
     },
     {
@@ -44,10 +44,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onLogout, acti
       icon: <HiUsers className="w-5 h-5" />
     },
     {
-      id: 'analytics',
-      name: 'Analytics',
-      roles: ['admin'], // Only available to admin
-      icon: <HiChartPie className="w-5 h-5" />
+      id: 'tasks',
+      name: 'Task Management',
+      roles: ['admin', 'user'], // Available to both admin and users with appropriate permissions
+      icon: <HiClipboardList className="w-5 h-5" />
     },
     {
       id: 'settings',
