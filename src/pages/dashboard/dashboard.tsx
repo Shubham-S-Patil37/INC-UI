@@ -11,7 +11,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
-  department: string;
+  role: string;
   image?: string;
   createdAt: string;
 }
@@ -114,7 +114,7 @@ const Dashboard: React.FC = () => {
       name: 'John Doe',
       email: 'john@example.com',
       phone: '+1 234 567 8900',
-      department: 'Engineering',
+      role: 'admin',
       createdAt: '2024-01-15'
     },
     {
@@ -122,7 +122,7 @@ const Dashboard: React.FC = () => {
       name: 'Jane Smith',
       email: 'jane@example.com',
       phone: '+1 234 567 8901',
-      department: 'Marketing',
+      role: 'read',
       createdAt: '2024-01-16'
     }
   ]);
@@ -139,7 +139,7 @@ const Dashboard: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    department: '',
+    role: '',
     image: null as File | null
   });
 
@@ -212,7 +212,7 @@ const Dashboard: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.phone || !formData.department) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.role) {
       showError('Validation Error', 'Please fill in all required fields.');
       return;
     }
@@ -228,7 +228,7 @@ const Dashboard: React.FC = () => {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        department: formData.department,
+        role: formData.role,
         image: imageUrl || selectedUser?.image,
         createdAt: selectedUser ? selectedUser.createdAt : new Date().toISOString().split('T')[0]
       };
@@ -243,7 +243,7 @@ const Dashboard: React.FC = () => {
         setShowAddUserModal(false);
       }
 
-      setFormData({ name: '', email: '', phone: '', department: '', image: null });
+      setFormData({ name: '', email: '', phone: '', role: '', image: null });
       setSelectedUser(null);
     } catch (error) {
       showError('Error', 'Something went wrong. Please try again.');
@@ -256,14 +256,14 @@ const Dashboard: React.FC = () => {
       name: user.name,
       email: user.email,
       phone: user.phone,
-      department: user.department,
+      role: user.role,
       image: null
     });
     setShowEditUserModal(true);
   };
 
   const exportToCSV = () => {
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Department', 'Created At'];
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Role', 'Created At'];
     const csvContent = [
       headers.join(','),
       ...users.map(user => [
@@ -271,7 +271,7 @@ const Dashboard: React.FC = () => {
         `"${user.name}"`,
         user.email,
         user.phone,
-        user.department,
+        user.role,
         user.createdAt
       ].join(','))
     ].join('\n');
@@ -293,7 +293,7 @@ const Dashboard: React.FC = () => {
     setShowAddUserModal(false);
     setShowEditUserModal(false);
     setSelectedUser(null);
-    setFormData({ name: '', email: '', phone: '', department: '', image: null });
+    setFormData({ name: '', email: '', phone: '', role: '', image: null });
   };
 
   const handleLogout = () => {
@@ -337,159 +337,265 @@ const Dashboard: React.FC = () => {
 
   const renderProfileView = () => {
     return (
-      <div className="max-w-2xl">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="relative">
-              {profileFormData.newImage ? (
-                <img 
-                  src={URL.createObjectURL(profileFormData.newImage)} 
-                  alt="Profile Preview" 
-                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+      <div className="w-full max-w-none overflow-y-auto max-h-[calc(100vh-8rem)] custom-scrollbar">
+        {/* First Row - Profile Picture and Info */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+          <div className="flex items-start space-x-8">
+            {/* Left Side - Large Profile Image */}
+            <div className="flex-shrink-0">
+              <div className="relative">
+                {profileFormData.newImage ? (
+                  <img 
+                    src={URL.createObjectURL(profileFormData.newImage)} 
+                    alt="Profile Preview" 
+                    className="w-40 h-40 rounded-full object-cover border-8 border-white shadow-xl"
+                  />
+                ) : profileFormData.avatar ? (
+                  <img 
+                    src={profileFormData.avatar} 
+                    alt="Profile" 
+                    className="w-40 h-40 rounded-full object-cover border-8 border-white shadow-xl"
+                  />
+                ) : (
+                  <div className="w-40 h-40 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-8 border-white shadow-xl">
+                    <span className="text-white text-5xl font-medium">
+                      {currentUser ? `${currentUser.firstName[0]}${currentUser.lastName[0]}` : 'U'}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => profileImageInputRef.current?.click()}
+                  className="absolute bottom-2 right-2 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+                <input
+                  type="file"
+                  ref={profileImageInputRef}
+                  onChange={handleProfileImageChange}
+                  accept=".jpg,.jpeg,.png"
+                  className="hidden"
                 />
-              ) : profileFormData.avatar ? (
-                <img 
-                  src={profileFormData.avatar} 
-                  alt="Profile" 
-                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
-                />
-              ) : (
-                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
-                  <span className="text-white text-2xl font-medium">
-                    {currentUser ? `${currentUser.firstName[0]}${currentUser.lastName[0]}` : 'U'}
+              </div>
+              <div className="text-center mt-4">
+                <p className="text-sm text-gray-500">Click the camera icon to change</p>
+                <p className="text-xs text-gray-400">your profile picture</p>
+              </div>
+            </div>
+
+            {/* Right Side - User Information */}
+            <div className="flex-1">
+              <div className="mb-6">
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                  {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'User Profile'}
+                </h1>
+                <p className="text-lg text-gray-600 mb-4">Welcome to your profile dashboard</p>
+                <div className="flex items-center space-x-4">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    Active
                   </span>
                 </div>
-              )}
-              <button
-                type="button"
-                onClick={() => profileImageInputRef.current?.click()}
-                className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-              <input
-                type="file"
-                ref={profileImageInputRef}
-                onChange={handleProfileImageChange}
-                accept=".jpg,.jpeg,.png"
-                className="hidden"
-              />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'User Profile'}
-              </h2>
-              <p className="text-gray-600">Manage your personal information</p>
-              <p className="text-sm text-gray-500 mt-1">Click the camera icon to change your profile picture</p>
+              </div>
+
+              {/* Account Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6">
+                  <div className="flex items-center">
+                    <div className="p-3 rounded-full bg-blue-500">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-blue-800">Member Since</p>
+                      <p className="text-lg font-bold text-blue-900">
+                        {new Date(currentUser?.createdAt || '').toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short' 
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
+                  <div className="flex items-center">
+                    <div className="p-3 rounded-full bg-green-500">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-3H4a1 1 0 00-.5.073l.5.001L4 4.5 4.5 4H19a1 1 0 01.5.073V20a1 1 0 01-1 1H4a1 1 0 01-1-1V4.5z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-green-800">Permissions</p>
+                      <p className="text-lg font-bold text-green-900">{currentUser?.permissions.length || 0}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-6">
+                  <div className="flex items-center">
+                    <div className="p-3 rounded-full bg-purple-500">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-purple-800">Last Login</p>
+                      <p className="text-lg font-bold text-purple-900">Today</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
-          <form onSubmit={handleProfileSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  value={profileFormData.firstName}
-                  onChange={handleProfileInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter first name"
-                />
-              </div>
+        {/* Second Row - Update Profile Form */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Update Profile Information</h2>
+            <p className="text-gray-600">Keep your personal information up to date</p>
+          </div>
 
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  value={profileFormData.lastName}
-                  onChange={handleProfileInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter last name"
-                />
-              </div>
+          <form onSubmit={handleProfileSubmit} className="space-y-8">
+            {/* Personal Information Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                Personal Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    name="firstName"
+                    value={profileFormData.firstName}
+                    onChange={handleProfileInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                    placeholder="Enter first name"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={profileFormData.email}
-                  onChange={handleProfileInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter email address"
-                />
-              </div>
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    name="lastName"
+                    value={profileFormData.lastName}
+                    onChange={handleProfileInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                    placeholder="Enter last name"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={profileFormData.username}
-                  onChange={handleProfileInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                  placeholder="Username"
-                  disabled
-                />
-                <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    value={profileFormData.username}
+                    onChange={handleProfileInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    placeholder="Username"
+                    disabled
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+                </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-200">
+            {/* Contact Information Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                Contact Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={profileFormData.email}
+                    onChange={handleProfileInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                    placeholder="Enter email address"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Role
+                  </label>
+                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                    <div className="flex items-center">
+                      <span className="capitalize font-medium">{currentUser?.role}</span>
+                      <span className="ml-2 text-sm text-gray-500">
+                        ({currentUser?.permissions.join(', ')})
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Role and permissions are managed by administrators</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-6 border-t border-gray-200">
               <div className="flex space-x-4">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
                 >
                   Update Profile
                 </button>
                 <button
                   type="button"
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  onClick={() => {
+                    // Reset form to original values
+                    if (currentUser) {
+                      setProfileFormData({
+                        firstName: currentUser.firstName || '',
+                        lastName: currentUser.lastName || '',
+                        email: currentUser.email || '',
+                        username: currentUser.username || '',
+                        avatar: currentUser.avatar || null,
+                        newImage: null
+                      });
+                    }
+                  }}
+                  className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
                 >
-                  Cancel
+                  Reset Changes
                 </button>
               </div>
             </div>
           </form>
-        </div>
-
-        {/* User Info Card */}
-        <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Role:</span>
-              <span className="font-medium text-gray-900 capitalize">{currentUser?.role}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Permissions:</span>
-              <span className="font-medium text-gray-900">{currentUser?.permissions.join(', ')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Member Since:</span>
-              <span className="font-medium text-gray-900">
-                {new Date(currentUser?.createdAt || '').toLocaleDateString()}
-              </span>
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -626,8 +732,8 @@ const Dashboard: React.FC = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Departments</p>
-                <p className="text-2xl font-bold text-gray-900">{new Set(users.map(u => u.department)).size}</p>
+                <p className="text-sm font-medium text-gray-600">Roles</p>
+                <p className="text-2xl font-bold text-gray-900">{new Set(users.map(u => u.role)).size}</p>
               </div>
             </div>
           </div>
@@ -674,7 +780,7 @@ const Dashboard: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -709,7 +815,7 @@ const Dashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                      {user.department}
+                      {user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -807,23 +913,29 @@ const Dashboard: React.FC = () => {
         </header>
 
         {/* Content */}
-        <main className="p-6">
+        <main className={activeView === 'profile' ? 'p-3 overflow-hidden' : 'p-6'}>
           {renderMainContent()}
         </main>
       </div>
 
       {/* Add/Edit User Modal */}
       {(showAddUserModal || showEditUserModal) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedUser ? 'Edit User' : 'Add New User'}
-                </h3>
+        <div className="fixed inset-0 backdrop-blur-md bg-black/20 bg-opacity-20 flex items-center justify-center p-4 z-50">
+          <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    {selectedUser ? 'Edit User Profile' : 'Add New User'}
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    {selectedUser ? 'Update user information and profile details' : 'Create a new user account with profile information'}
+                  </p>
+                </div>
                 <button
                   onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors duration-150 p-2 hover:bg-gray-100 rounded-lg"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -831,21 +943,39 @@ const Dashboard: React.FC = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Image Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Profile Image
-                  </label>
-                  <div className="flex items-center space-x-4">
-                    {(formData.image || selectedUser?.image) && (
-                      <img 
-                        src={formData.image ? URL.createObjectURL(formData.image) : selectedUser?.image} 
-                        alt="Preview" 
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                    )}
-                    <div>
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Profile Image Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-blue-200">
+                    Profile Picture
+                  </h4>
+                  <div className="flex items-center space-x-6">
+                    <div className="relative">
+                      {(formData.image || selectedUser?.image) ? (
+                        <img 
+                          src={formData.image ? URL.createObjectURL(formData.image) : selectedUser?.image} 
+                          alt="Profile Preview" 
+                          className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                          <span className="text-white text-2xl font-medium">
+                            {formData.name ? formData.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="flex-1">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -856,106 +986,147 @@ const Dashboard: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                        className="px-6 py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-700 hover:border-blue-500 hover:bg-blue-50 transition-colors duration-200 font-medium"
                       >
-                        Choose File
+                        Choose Profile Image
                       </button>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 mt-2">
                         JPG, PNG, PDF, DOCX (max 10MB)
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Click the camera icon or button above to change the profile picture
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Name */}
+                {/* Personal Information Section */}
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter full name"
-                    required
-                  />
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                    Personal Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                        placeholder="Enter full name"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                        placeholder="Enter email address"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Email */}
+                {/* Contact Information Section */}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter email address"
-                    required
-                  />
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                    Contact Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                        placeholder="Enter phone number"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                        Role *
+                      </label>
+                      <select
+                        id="role"
+                        name="role"
+                        value={formData.role}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                        required
+                      >
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="write">Write</option>
+                        <option value="read">Read</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Phone */}
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter phone number"
-                    required
-                  />
-                </div>
+                {/* Account Information Section */}
+                {selectedUser && (
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h4 className="text-lg font-medium text-gray-900 mb-4 pb-2 border-b border-gray-200">
+                      Account Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          User ID
+                        </label>
+                        <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
+                          #{selectedUser.id}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Created Date
+                        </label>
+                        <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
+                          {new Date(selectedUser.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                {/* Department */}
-                <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
-                    Department *
-                  </label>
-                  <select
-                    id="department"
-                    name="department"
-                    value={formData.department}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select Department</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Sales">Sales</option>
-                    <option value="HR">Human Resources</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Operations">Operations</option>
-                  </select>
-                </div>
-
-                {/* Buttons */}
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-150"
-                  >
-                    {selectedUser ? 'Update User' : 'Add User'}
-                  </button>
+                {/* Action Buttons */}
+                <div className="pt-6 border-t border-gray-200">
+                  <div className="flex space-x-4">
+                    <button
+                      type="submit"
+                      className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
+                    >
+                      {selectedUser ? 'Update User' : 'Create User'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200 font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
