@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { HiX } from 'react-icons/hi';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -62,7 +63,7 @@ const useNotificationSystem = () => {
             onClick={() => onClose(id)}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
-            ✕
+            <HiX className="w-4 h-4" />
           </button>
         </div>
       </div>

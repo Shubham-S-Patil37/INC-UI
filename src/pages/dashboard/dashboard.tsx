@@ -5,6 +5,23 @@ import { useAppSelector, useAppDispatch } from '../../hooks/redux';
 import { selectUser, selectIsAdmin } from '../../store/selectors/authSelectors';
 import { logout } from '../../store/slices/authSlice';
 import useNotificationSystem from '../../components/notificationPopup';
+import { 
+  HiCamera, 
+  HiUser, 
+  HiCheckCircle, 
+  HiClock, 
+  HiCog, 
+  HiUsers, 
+  HiChartBar, 
+  HiOfficeBuilding, 
+  HiExclamationCircle,
+  HiX,
+  HiPlus,
+  HiDownload,
+  HiPencil,
+  HiClipboardCheck,
+  HiShieldCheck
+} from 'react-icons/hi';
 
 interface User {
   id: number;
@@ -326,9 +343,7 @@ const Dashboard: React.FC = () => {
   const renderAccessDenied = () => (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
       <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-        </svg>
+        <HiExclamationCircle className="w-8 h-8 text-red-600" />
       </div>
       <h3 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h3>
       <p className="text-gray-600">You don't have permission to access this section.</p>
@@ -368,10 +383,7 @@ const Dashboard: React.FC = () => {
                   onClick={() => profileImageInputRef.current?.click()}
                   className="absolute bottom-2 right-2 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+                  <HiCamera className="w-6 h-6" />
                 </button>
                 <input
                   type="file"
@@ -396,9 +408,7 @@ const Dashboard: React.FC = () => {
                 <p className="text-lg text-gray-600 mb-4">Welcome to your profile dashboard</p>
                 <div className="flex items-center space-x-4">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <HiCheckCircle className="w-4 h-4 mr-2" />
                     {currentUser?.role === 'admin' ? 'Administrator' : 'User'}
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
@@ -413,9 +423,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6">
                   <div className="flex items-center">
                     <div className="p-3 rounded-full bg-blue-500">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                      <HiUser className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-blue-800">Member Since</p>
@@ -432,9 +440,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6">
                   <div className="flex items-center">
                     <div className="p-3 rounded-full bg-green-500">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-3H4a1 1 0 00-.5.073l.5.001L4 4.5 4.5 4H19a1 1 0 01.5.073V20a1 1 0 01-1 1H4a1 1 0 01-1-1V4.5z" />
-                      </svg>
+                      <HiShieldCheck className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-green-800">Permissions</p>
@@ -446,9 +452,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-6">
                   <div className="flex items-center">
                     <div className="p-3 rounded-full bg-purple-500">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <HiClock className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-purple-800">Last Login</p>
@@ -621,9 +625,7 @@ const Dashboard: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-blue-50">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                  <HiUser className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Account Status</p>
@@ -635,9 +637,7 @@ const Dashboard: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-green-50">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <HiCheckCircle className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Permissions</p>
@@ -657,9 +657,7 @@ const Dashboard: React.FC = () => {
               >
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <HiUser className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900">Update Profile</h4>
@@ -674,10 +672,7 @@ const Dashboard: React.FC = () => {
               >
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-green-100 rounded-lg">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                    <HiCog className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-900">Account Settings</h4>
@@ -699,9 +694,7 @@ const Dashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-blue-50">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
+                <HiUsers className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
@@ -713,9 +706,7 @@ const Dashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-green-50">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <HiCheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Users</p>
@@ -727,9 +718,7 @@ const Dashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-purple-50">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+                <HiOfficeBuilding className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Roles</p>
@@ -893,18 +882,14 @@ const Dashboard: React.FC = () => {
                   onClick={exportToCSV}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <HiDownload className="w-4 h-4" />
                   <span>Export CSV</span>
                 </button>
                 <button
                   onClick={() => setShowAddUserModal(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
+                  <HiPlus className="w-4 h-4" />
                   <span>Add User</span>
                 </button>
               </div>
@@ -937,9 +922,7 @@ const Dashboard: React.FC = () => {
                   onClick={closeModal}
                   className="text-gray-400 hover:text-gray-600 transition-colors duration-150 p-2 hover:bg-gray-100 rounded-lg"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <HiX className="w-6 h-6" />
                 </button>
               </div>
 
@@ -969,10 +952,7 @@ const Dashboard: React.FC = () => {
                         onClick={() => fileInputRef.current?.click()}
                         className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                        <HiCamera className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="flex-1">
