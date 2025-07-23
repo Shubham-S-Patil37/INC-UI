@@ -1,0 +1,975 @@
+import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Sidebar from '../../components/sidebar';
+import { useAppSelector, useAppDispatch } from '../../hooks/redux';
+import { selectUser, selectIsAdmin } from '../../store/selectors/authSelectors';
+import { logout } from '../../store/slices/authSlice';
+import useNotificationSystem from '../../components/notificationPopup';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  department: string;
+  image?: string;
+  createdAt: string;
+}
+const Dashboard: React.FC = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState('dashboard');
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const currentUser = useAppSelector(selectUser);
+  const isAdminUser = useAppSelector(selectIsAdmin);
+
+  // Profile form data state - moved to top level to avoid hook order issues
+  const [profileFormData, setProfileFormData] = useState({
+    firstName: currentUser?.firstName || '',
+    lastName: currentUser?.lastName || '',
+    email: currentUser?.email || '',
+    username: currentUser?.username || '',
+    avatar: currentUser?.avatar || null as string | null,
+    newImage: null as File | null
+  });
+
+  // Update profile form data when currentUser changes
+  React.useEffect(() => {
+    if (currentUser) {
+      setProfileFormData({
+        firstName: currentUser.firstName || '',
+        lastName: currentUser.lastName || '',
+        email: currentUser.email || '',
+        username: currentUser.username || '',
+        avatar: currentUser.avatar || null,
+        newImage: null
+      });
+    }
+  }, [currentUser]);
+
+  // Profile form handlers
+  const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setProfileFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        showError('Invalid File Type', 'Please upload JPG or PNG images only.');
+        return;
+      }
+
+      // Validate file size (5MB for profile images)
+      if (file.size > 5 * 1024 * 1024) {
+        showError('File Too Large', 'Image size must be less than 5MB.');
+        return;
+      }
+
+      setProfileFormData(prev => ({
+        ...prev,
+        newImage: file
+      }));
+    }
+  };
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      let newAvatarUrl = profileFormData.avatar;
+      
+      // If user selected a new image, resize and convert it
+      if (profileFormData.newImage) {
+        newAvatarUrl = await resizeImage(profileFormData.newImage);
+      }
+
+      // Here you would typically update the user profile in your backend
+      // For now, we'll just show a success message
+      showSuccess('Profile Updated!', 'Your profile has been updated successfully.');
+      
+      // Update the avatar in the form data
+      setProfileFormData(prev => ({
+        ...prev,
+        avatar: newAvatarUrl,
+        newImage: null
+      }));
+      
+    } catch (error) {
+      showError('Error', 'Failed to update profile. Please try again.');
+    }
+  };
+  const [users, setUsers] = useState<User[]>([
+    {
+      id: 1,
+      name: 'John Doe',
+      email: 'john@example.com',
+      phone: '+1 234 567 8900',
+      department: 'Engineering',
+      createdAt: '2024-01-15'
+    },
+    {
+      id: 2,
+      name: 'Jane Smith',
+      email: 'jane@example.com',
+      phone: '+1 234 567 8901',
+      department: 'Marketing',
+      createdAt: '2024-01-16'
+    }
+  ]);
+  
+  const {
+    notifications,
+    NotificationContainer,
+    showSuccess,
+    showError,
+    removeNotification
+  } = useNotificationSystem();
+
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    image: null as File | null
+  });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileImageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        showError('Invalid File Type', 'Please upload JPG, PNG, PDF, or DOCX files only.');
+        return;
+      }
+
+      // Validate file size (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        showError('File Too Large', 'File size must be less than 10MB.');
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        image: file
+      }));
+    }
+  };
+
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = 200;
+        canvas.height = 200;
+        
+        // Calculate aspect ratio and crop to center
+        const aspectRatio = img.width / img.height;
+        let sourceX = 0, sourceY = 0, sourceWidth = img.width, sourceHeight = img.height;
+        
+        if (aspectRatio > 1) {
+          // Wide image - crop width
+          sourceWidth = img.height;
+          sourceX = (img.width - sourceWidth) / 2;
+        } else {
+          // Tall image - crop height
+          sourceHeight = img.width;
+          sourceY = (img.height - sourceHeight) / 2;
+        }
+        
+        ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, 200, 200);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.email || !formData.phone || !formData.department) {
+      showError('Validation Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    try {
+      let imageUrl = '';
+      if (formData.image && formData.image.type.startsWith('image/')) {
+        imageUrl = await resizeImage(formData.image);
+      }
+
+      const newUser: User = {
+        id: selectedUser ? selectedUser.id : Date.now(),
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        department: formData.department,
+        image: imageUrl || selectedUser?.image,
+        createdAt: selectedUser ? selectedUser.createdAt : new Date().toISOString().split('T')[0]
+      };
+
+      if (selectedUser) {
+        setUsers(prev => prev.map(user => user.id === selectedUser.id ? newUser : user));
+        showSuccess('User Updated!', 'User information has been updated successfully.');
+        setShowEditUserModal(false);
+      } else {
+        setUsers(prev => [...prev, newUser]);
+        showSuccess('User Added!', 'New user has been added successfully.');
+        setShowAddUserModal(false);
+      }
+
+      setFormData({ name: '', email: '', phone: '', department: '', image: null });
+      setSelectedUser(null);
+    } catch (error) {
+      showError('Error', 'Something went wrong. Please try again.');
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setFormData({
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      department: user.department,
+      image: null
+    });
+    setShowEditUserModal(true);
+  };
+
+  const exportToCSV = () => {
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Department', 'Created At'];
+    const csvContent = [
+      headers.join(','),
+      ...users.map(user => [
+        user.id,
+        `"${user.name}"`,
+        user.email,
+        user.phone,
+        user.department,
+        user.createdAt
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `users_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showSuccess('Export Complete!', 'Users data has been exported to CSV successfully.');
+  };
+
+  const closeModal = () => {
+    setShowAddUserModal(false);
+    setShowEditUserModal(false);
+    setSelectedUser(null);
+    setFormData({ name: '', email: '', phone: '', department: '', image: null });
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    localStorage.removeItem('currentUser');
+    navigate('/login');
+  };
+
+  const handleMenuItemClick = (itemId: string) => {
+    setActiveView(itemId);
+  };
+
+  const renderMainContent = () => {
+    switch (activeView) {
+      case 'dashboard':
+        return renderDashboardView();
+      case 'users':
+        return isAdminUser ? renderUsersView() : renderAccessDenied();
+      case 'profile':
+        return renderProfileView();
+      case 'analytics':
+        return isAdminUser ? renderAnalyticsView() : renderAccessDenied();
+      case 'settings':
+        return renderSettingsView();
+      default:
+        return renderDashboardView();
+    }
+  };
+
+  const renderAccessDenied = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h3>
+      <p className="text-gray-600">You don't have permission to access this section.</p>
+    </div>
+  );
+
+  const renderProfileView = () => {
+    return (
+      <div className="max-w-2xl">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center space-x-4 mb-6">
+            <div className="relative">
+              {profileFormData.newImage ? (
+                <img 
+                  src={URL.createObjectURL(profileFormData.newImage)} 
+                  alt="Profile Preview" 
+                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              ) : profileFormData.avatar ? (
+                <img 
+                  src={profileFormData.avatar} 
+                  alt="Profile" 
+                  className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              ) : (
+                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                  <span className="text-white text-2xl font-medium">
+                    {currentUser ? `${currentUser.firstName[0]}${currentUser.lastName[0]}` : 'U'}
+                  </span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => profileImageInputRef.current?.click()}
+                className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors duration-200 shadow-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+              <input
+                type="file"
+                ref={profileImageInputRef}
+                onChange={handleProfileImageChange}
+                accept=".jpg,.jpeg,.png"
+                className="hidden"
+              />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'User Profile'}
+              </h2>
+              <p className="text-gray-600">Manage your personal information</p>
+              <p className="text-sm text-gray-500 mt-1">Click the camera icon to change your profile picture</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleProfileSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={profileFormData.firstName}
+                  onChange={handleProfileInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter first name"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={profileFormData.lastName}
+                  onChange={handleProfileInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter last name"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={profileFormData.email}
+                  onChange={handleProfileInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={profileFormData.username}
+                  onChange={handleProfileInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                  placeholder="Username"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200">
+              <div className="flex space-x-4">
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Update Profile
+                </button>
+                <button
+                  type="button"
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* User Info Card */}
+        <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Role:</span>
+              <span className="font-medium text-gray-900 capitalize">{currentUser?.role}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Permissions:</span>
+              <span className="font-medium text-gray-900">{currentUser?.permissions.join(', ')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Member Since:</span>
+              <span className="font-medium text-gray-900">
+                {new Date(currentUser?.createdAt || '').toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDashboardView = () => {
+    if (currentUser?.role === 'user') {
+      // User Dashboard
+      return (
+        <div>
+          {/* Welcome Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Welcome back, {currentUser.firstName}!
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Here's a quick overview of your account and recent activity.
+            </p>
+          </div>
+
+          {/* User Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-blue-50">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Account Status</p>
+                  <p className="text-2xl font-bold text-gray-900">Active</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-green-50">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Permissions</p>
+                  <p className="text-2xl font-bold text-gray-900">{currentUser.permissions.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => setActiveView('profile')}
+                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors duration-200 text-left"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900">Update Profile</h4>
+                    <p className="text-sm text-gray-500">Manage your personal information</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveView('settings')}
+                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors duration-200 text-left"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900">Account Settings</h4>
+                    <p className="text-sm text-gray-500">Configure your preferences</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Admin Dashboard
+    return (
+      <div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-50">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-50">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Users</p>
+                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-50">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Departments</p>
+                <p className="text-2xl font-bold text-gray-900">{new Set(users.map(u => u.department)).size}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Welcome Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Welcome to Admin Dashboard
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Manage users, view analytics, and configure system settings. Select a menu item from the sidebar to get started.
+          </p>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => setActiveView('users')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+            >
+              Manage Users
+            </button>
+            <button
+              onClick={() => setActiveView('analytics')}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+            >
+              View Analytics
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUsersView = () => (
+    <div>
+      {/* Users Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Users List</h3>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((user) => (
+                <tr 
+                  key={user.id} 
+                  className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                  onClick={() => handleEditUser(user)}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      {user.image ? (
+                        <img className="h-10 w-10 rounded-full object-cover" src={user.image} alt={user.name} />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                        <div className="text-sm text-gray-500">ID: {user.id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{user.email}</div>
+                    <div className="text-sm text-gray-500">{user.phone}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      {user.department}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditUser(user);
+                      }}
+                      className="text-blue-600 hover:text-blue-900 transition-colors duration-150"
+                    >
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAnalyticsView = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">Analytics</h2>
+      <p className="text-gray-600">Analytics dashboard coming soon...</p>
+    </div>
+  );
+
+  const renderSettingsView = () => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">Settings</h2>
+      <p className="text-gray-600">Settings panel coming soon...</p>
+    </div>
+  );
+
+  return (
+    <div className="flex min-h-screen w-full bg-gray-50">
+      {/* Sidebar */}
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        onLogout={handleLogout}
+        activeItem={activeView}
+        onMenuItemClick={handleMenuItemClick}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 w-full overflow-hidden">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {activeView === 'dashboard' && 'Dashboard'}
+                {activeView === 'users' && 'User Management'}
+                {activeView === 'profile' && 'My Profile'}
+                {activeView === 'analytics' && 'Analytics'}
+                {activeView === 'settings' && 'Settings'}
+              </h1>
+              <p className="text-gray-600 text-sm">
+                {activeView === 'dashboard' && (currentUser?.role === 'admin' ? 'Admin Dashboard Overview' : 'Your Personal Dashboard')}
+                {activeView === 'users' && 'Manage your users and their information'}
+                {activeView === 'profile' && 'Manage your personal information'}
+                {activeView === 'analytics' && 'View detailed analytics and reports'}
+                {activeView === 'settings' && 'Configure your application settings'}
+              </p>
+            </div>
+            {activeView === 'users' && (
+              <div className="flex space-x-3">
+                <button
+                  onClick={exportToCSV}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  onClick={() => setShowAddUserModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>Add User</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="p-6">
+          {renderMainContent()}
+        </main>
+      </div>
+
+      {/* Add/Edit User Modal */}
+      {(showAddUserModal || showEditUserModal) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedUser ? 'Edit User' : 'Add New User'}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Image
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    {(formData.image || selectedUser?.image) && (
+                      <img 
+                        src={formData.image ? URL.createObjectURL(formData.image) : selectedUser?.image} 
+                        alt="Preview" 
+                        className="w-16 h-16 rounded-full object-cover"
+                      />
+                    )}
+                    <div>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept=".jpg,.jpeg,.png,.pdf,.docx"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                      >
+                        Choose File
+                      </button>
+                      <p className="text-xs text-gray-500 mt-1">
+                        JPG, PNG, PDF, DOCX (max 10MB)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter email address"
+                    required
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter phone number"
+                    required
+                  />
+                </div>
+
+                {/* Department */}
+                <div>
+                  <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-2">
+                    Department *
+                  </label>
+                  <select
+                    id="department"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Sales">Sales</option>
+                    <option value="HR">Human Resources</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Operations">Operations</option>
+                  </select>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-150"
+                  >
+                    {selectedUser ? 'Update User' : 'Add User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Container */}
+      <NotificationContainer 
+        notifications={notifications} 
+        onClose={removeNotification} 
+      />
+    </div>
+  );
+};
+
+export default Dashboard;
