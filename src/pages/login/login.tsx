@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ForgotPassword from './forgotPassword';
 import { useAppDispatch } from '../../hooks/redux';
 import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
-import { loginUser, clearError } from '../../store/slices/authSlice';
+import { loginUser } from '../../store/slices/authSlice';
 import useNotificationSystem from '../../components/notificationPopup';
 import type { CurrentUser } from '../../store/slices/authSlice';
+import { createUser } from '../../store/slices/usersSlice';
 
 // Define user roles and permissions
 export interface UserRole {
@@ -53,6 +54,7 @@ const Login: React.FC = () => {
     removeNotification
   } = useNotificationSystem();
   const [formData, setFormData] = useState({
+    name: '',
     username: '',
     email: '',
     password: '',
@@ -103,23 +105,35 @@ const Login: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
       if (isSignUp) {
-        // Handle sign up
+        const userData = {
+          name: formData.name,
+          email: formData.email,
+          phone: "",
+          role: 'user',
+          image: "",
+          userName: formData.username,
+          password: formData.password
+        };
+
+        await dispatch(createUser(userData)).unwrap();
         showSuccess('Account Created!', 'Your account has been created successfully. Welcome aboard!');
+        setIsSignUp(false);
       } else {
         // Dispatch login start action
         dispatch(loginStart());
 
         const user = await dispatch(loginUser({ username: formData.username, password: formData.password }));
-        
+        debugger
         if (
           user.payload &&
           typeof user.payload === 'object' &&
           'user' in user.payload
         ) {
+          debugger
           const user1 = (user.payload as { user: CurrentUser }).user;
           showSuccess('Login Successful!', `Welcome back, ${user1.firstName}! You have been logged in successfully.`);
           // Create user object for Redux state
@@ -131,7 +145,7 @@ const Login: React.FC = () => {
             lastName: user1.lastName,
             role: user1.role as 'admin' | 'user',
             permissions: user1.permissions,
-            avatar: null,
+            imageUrl: user1.imageUrl || null,
             createdAt: user1.createdAt
           };
 
@@ -163,7 +177,8 @@ const Login: React.FC = () => {
       username: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      name: ''
     });
   };
 
@@ -223,6 +238,30 @@ const Login: React.FC = () => {
               </div>
               {errors.username && <p className="text-red-500 text-xs sm:text-sm">{errors.username}</p>}
             </div>
+
+            {isSignUp && (
+  <div className="space-y-2">
+    <label htmlFor="name" className="text-sm font-semibold text-gray-700 block text-left">
+      Name
+    </label>
+    <div className="relative">
+      <input
+        type="text"
+        id="name"
+        name="name"
+        value={formData.name}
+        onChange={handleInputChange}
+        className={`w-full px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl border-2 transition-all duration-200 bg-gray-50/50 focus:bg-white focus:outline-none text-sm sm:text-base ${
+          errors.name 
+            ? 'border-red-300 focus:border-red-500' 
+            : 'border-gray-200 focus:border-blue-500'
+        }`}
+        placeholder="Enter your name"
+      />
+    </div>
+    {errors.name && <p className="text-red-500 text-xs sm:text-sm">{errors.name}</p>}
+  </div>
+)}
 
             {/* Email Field (only for sign up) */}
             {isSignUp && (
@@ -359,26 +398,7 @@ const Login: React.FC = () => {
             </p>
           </div>
 
-          {/* Demo Credentials */}
-          {!isSignUp && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-              <h4 className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-blue-700 font-medium">Admin:</span>
-                  <span className="text-blue-600">admin / admin123</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-700 font-medium">User:</span>
-                  <span className="text-blue-600">john.doe / user123</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-blue-700 font-medium">User:</span>
-                  <span className="text-blue-600">jane.smith / user123</span>
-                </div>
-              </div>
-            </div>
-          )}
+          
         </div>
       </div>
 

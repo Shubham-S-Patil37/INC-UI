@@ -123,11 +123,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle, onLogout, acti
       {/* User Profile */}
       <div className="p-4 border-t border-gray-200">
         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} mb-3`}>
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">
-              {currentUser ? `${currentUser.firstName[0]}${currentUser.lastName[0]}` : 'U'}
-            </span>
-          </div>
+          {currentUser && currentUser.imageUrl ? (
+            <img
+              src={currentUser.imageUrl}
+              alt="Profile"
+              className="w-8 h-8 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-sm font-medium">
+                {currentUser ? `${currentUser.firstName[0]}${currentUser.lastName[0]}` : 'U'}
+              </span>
+            </div>
+          )}
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">

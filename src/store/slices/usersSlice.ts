@@ -18,14 +18,27 @@ interface UsersState {
   users: User[];
   loading: boolean;
   error: string | null;
+  imageUrl?: string;
 }
 
+const initialState: UsersState = {
+  users: [],
+  loading: false,
+  error: null,
+  imageUrl: undefined,
+};
+
 const BASE_URL = "http://localhost:8000/api/users/";
-const authHeaders = (token: string) => ({
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-});
+const authHeaders = () => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return { headers: {} };
+
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
 
 export const fetchUsers = createAsyncThunk(
   "users/fetchUsers",
@@ -33,7 +46,7 @@ export const fetchUsers = createAsyncThunk(
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) return rejectWithValue("No access token found");
-      const res = await axios.get(BASE_URL, authHeaders(token));
+      const res = await axios.get(BASE_URL, authHeaders());
       debugger;
       return res.data.data;
     } catch (error) {
@@ -48,8 +61,8 @@ export const createUser = createAsyncThunk(
   "users/createUser",
   async (userData: Omit<User, "id" | "createdAt">, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return rejectWithValue("No access token found");
+      // const token = localStorage.getItem("accessToken");
+      // if (!token) return rejectWithValue("No access token found");
 
       // const response = await fetch(BASE_URL, {
       //   method: "POST",
@@ -59,7 +72,7 @@ export const createUser = createAsyncThunk(
       //   body: JSON.stringify(userData),
       // });
 
-      const res = await axios.post(BASE_URL, userData, authHeaders(token));
+      const res = await axios.post(BASE_URL, userData);
       return res.data.data;
     } catch (error) {
       return rejectWithValue(
@@ -112,17 +125,38 @@ export const deleteUserAPI = createAsyncThunk(
   }
 );
 
-const initialState: UsersState = {
-  users: [],
-  loading: false,
-  error: null,
-};
+export const uploadUserImage = createAsyncThunk(
+  "users/uploadUserImage",
+  async ({ file }: { file: File }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await axios.post(
+        "http://localhost:8000/api/upload",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      // Assuming the API returns the image URL in res.data.url
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Unknown error"
+      );
+    }
+  }
+);
 
 const usersSlice = createSlice({
   name: "users",
   initialState,
   reducers: {
-    // Keep existing local actions for immediate UI updates
     addUser: (state, action: PayloadAction<User>) => {
       state.users.push(action.payload);
     },
@@ -148,6 +182,17 @@ const usersSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    setUser: (state, action: PayloadAction<User>) => {
+      // Optionally update the user in the users array if present
+      const index = state.users.findIndex(
+        (user) => user._id === action.payload._id
+      );
+      if (index !== -1) {
+        state.users[index] = action.payload;
+      }
+      // You can also store the current user separately if needed
+      // state.currentUser = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -215,6 +260,21 @@ const usersSlice = createSlice({
       .addCase(deleteUserAPI.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      // Upload user image
+      .addCase(uploadUserImage.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(uploadUserImage.fulfilled, (state, action) => {
+        state.loading = false;
+        state.imageUrl = action.payload.url;
+        state.error = null;
+      })
+      .addCase(uploadUserImage.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
@@ -227,6 +287,7 @@ export const {
   setError,
   setUsers,
   clearError,
+  setUser,
 } = usersSlice.actions;
 
 export default usersSlice.reducer;

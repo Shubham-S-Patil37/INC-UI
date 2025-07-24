@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, type FC } from 'react';
 import { HiX, HiCamera } from 'react-icons/hi';
 import type { User } from '../store/slices/usersSlice';
 
@@ -21,7 +21,7 @@ interface UserModalProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const UserModal: React.FC<UserModalProps> = ({
+const UserModal: FC<UserModalProps> = ({
   isOpen,
   isEdit,
   selectedUser,

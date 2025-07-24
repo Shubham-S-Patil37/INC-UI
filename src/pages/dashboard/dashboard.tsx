@@ -13,7 +13,9 @@ import {
   fetchUsers, 
   createUser, 
   updateUserAPI, 
-  deleteUserAPI 
+  deleteUserAPI, 
+  uploadUserImage,
+  setUser
 } from '../../store/slices/usersSlice';
 import { createTask, fetchTasks, updateTaskApi } from '../../store/slices/tasksSlice';
 import useNotificationSystem from '../../components/notificationPopup';
@@ -51,7 +53,7 @@ const Dashboard: React.FC = () => {
     lastName: currentUser?.lastName || '',
     email: currentUser?.email || '',
     username: currentUser?.username || '',
-    avatar: currentUser?.avatar || null as string | null,
+    imageUrl: currentUser?.imageUrl || null as string | null,
     newImage: null as File | null
   });
 
@@ -62,7 +64,7 @@ const Dashboard: React.FC = () => {
         lastName: currentUser.lastName || '',
         email: currentUser.email || '',
         username: currentUser.username || '',
-        avatar: currentUser.avatar || null,
+        imageUrl: currentUser.imageUrl || null,
         newImage: null
       });
     }
@@ -86,7 +88,7 @@ const Dashboard: React.FC = () => {
     }));
   };
 
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
@@ -100,10 +102,32 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      setProfileFormData(prev => ({
-        ...prev,
-        newImage: file
-      }));
+      const response = await dispatch(uploadUserImage({ file })).unwrap();
+      if (response.success && response.url) {
+        // Update localStorage
+        // const updatedUser = { ...currentUser, imageUrl: response.url, phone: "", email: currentUser?.email || "" };
+        
+        const updatedUser = { 
+          ...currentUser, 
+          imageUrl: response.url, 
+          phone: "", 
+          email: currentUser?.email || "", 
+          role: currentUser?.role ?? "user",
+          createdAt: currentUser?.createdAt ?? ""
+        };
+
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        
+        dispatch(setUser(updatedUser));
+        setProfileFormData(prev => ({
+          ...prev,
+          imageUrl: response.url,
+          newImage: file
+        }));
+        showSuccess('Profile Image Updated!', 'Your profile image has been updated.');
+      } else {
+        showError('Upload Failed', 'Could not upload image. Please try again.');
+      }
     }
   };
 
@@ -111,17 +135,17 @@ const Dashboard: React.FC = () => {
     e.preventDefault();
     
     try {
-      let newAvatarUrl = profileFormData.avatar;
-      
+      let newImageUrl = profileFormData.imageUrl;
+
       if (profileFormData.newImage) {
-        newAvatarUrl = await resizeImage(profileFormData.newImage);
+        newImageUrl = await resizeImage(profileFormData.newImage);
       }
 
       showSuccess('Profile Updated!', 'Your profile has been updated successfully.');
       
       setProfileFormData(prev => ({
         ...prev,
-        avatar: newAvatarUrl,
+        avatar: newImageUrl,
         newImage: null
       }));
       
@@ -464,9 +488,9 @@ const Dashboard: React.FC = () => {
                     alt="Profile Preview" 
                     className="w-40 h-40 rounded-full object-cover border-8 border-white shadow-xl"
                   />
-                ) : profileFormData.avatar ? (
+                ) : profileFormData.imageUrl ? (
                   <img 
-                    src={profileFormData.avatar} 
+                    src={profileFormData.imageUrl} 
                     alt="Profile" 
                     className="w-40 h-40 rounded-full object-cover border-8 border-white shadow-xl"
                   />
@@ -651,7 +675,7 @@ const Dashboard: React.FC = () => {
                         lastName: currentUser.lastName || '',
                         email: currentUser.email || '',
                         username: currentUser.username || '',
-                        avatar: currentUser.avatar || null,
+                        imageUrl: currentUser.imageUrl   || null,
                         newImage: null
                       });
                     }
@@ -1116,3 +1140,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

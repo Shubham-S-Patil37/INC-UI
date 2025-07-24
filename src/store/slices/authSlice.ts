@@ -10,7 +10,7 @@ export interface CurrentUser {
   lastName: string;
   role: "admin" | "user";
   permissions: string[];
-  avatar: string | null;
+  imageUrl: string | null;
   createdAt: string;
 }
 
