@@ -1,14 +1,17 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import axios from "axios";
+import type { RootState } from "./../../store"; // 👈 Adjust this path based on your project structure
+// 👈 Adjust this path based on your project structure
 
 export interface Task {
-  id: number;
+  _id?: number;
   title: string;
   description: string;
   assignedTo: number;
   assignedBy: number;
-  assignedToName: string;
-  assignedByName: string;
+  assignedToName?: string;
+  assignedByName?: string;
   status: "pending" | "in-progress" | "completed";
   priority: "low" | "medium" | "high";
   dueDate: string;
@@ -22,103 +25,113 @@ interface TasksState {
 }
 
 const initialState: TasksState = {
-  tasks: [
-    {
-      id: 1,
-      title: "Complete User Authentication",
-      description:
-        "Implement login and registration functionality with proper validation",
-      assignedTo: 2,
-      assignedBy: 1,
-      assignedToName: "Jane Smith",
-      assignedByName: "John Doe",
-      status: "in-progress",
-      priority: "high",
-      dueDate: "2025-07-30",
-      createdAt: "2025-07-20",
-    },
-    {
-      id: 2,
-      title: "Update User Profile UI",
-      description:
-        "Redesign the user profile page with better layout and responsiveness",
-      assignedTo: 1,
-      assignedBy: 1,
-      assignedToName: "John Doe",
-      assignedByName: "John Doe",
-      status: "completed",
-      priority: "medium",
-      dueDate: "2025-07-25",
-      createdAt: "2025-07-18",
-    },
-  ],
+  tasks: [],
   loading: false,
   error: null,
 };
+
+const BASE_URL = "http://localhost:8000/api/tasks/"; // 🔧 Adjust accordingly
+
+// Utility to build auth headers from accessToken
+const authHeaders = (token: string) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+
+// ✅ Fetch tasks
+export const fetchTasks = createAsyncThunk<
+  Task[],
+  void,
+  { state: RootState; rejectValue: string }
+>("tasks/fetchTasks", async (_, { getState, rejectWithValue }) => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return rejectWithValue("No access token found");
+
+  try {
+    const res = await axios.get(BASE_URL, authHeaders(token));
+    return res.data.data; // or res.data depending on API
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Failed to fetch tasks"
+    );
+  }
+});
+
+// ✅ Create task
+export const createTask = createAsyncThunk<
+  Task,
+  Task,
+  { state: RootState; rejectValue: string }
+>("tasks/createTask", async (task, { getState, rejectWithValue }) => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return rejectWithValue("No access token found");
+  try {
+    const res = await axios.post(BASE_URL, task, authHeaders(token));
+    return res.data.data;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Failed to create task"
+    );
+  }
+});
+
+// ✅ Update task
+export const updateTaskApi = createAsyncThunk<
+  Task,
+  Task,
+  { state: RootState; rejectValue: string }
+>("tasks/updateTask", async (task, { getState, rejectWithValue }) => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) return rejectWithValue("No access token found");
+
+  try {
+    const res = await axios.put(
+      `${BASE_URL}/${task._id}`,
+      task,
+      authHeaders(token)
+    );
+    return res.data.data;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Failed to update task"
+    );
+  }
+});
 
 const tasksSlice = createSlice({
   name: "tasks",
   initialState,
   reducers: {
-    // Add a new task
-    addTask: (state, action: PayloadAction<Task>) => {
-      state.tasks.push(action.payload);
-    },
+    // Optional: Local state updates if needed
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchTasks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTasks.fulfilled, (state, action) => {
+        state.loading = false;
+        debugger;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload ?? "Error loading tasks";
+      })
 
-    // Update an existing task
-    updateTask: (state, action: PayloadAction<Task>) => {
-      const index = state.tasks.findIndex(
-        (task) => task.id === action.payload.id
-      );
-      if (index !== -1) {
-        state.tasks[index] = action.payload;
-      }
-    },
+      .addCase(createTask.fulfilled, (state, action) => {
+        state.tasks.push(action.payload);
+      })
 
-    // Update task status only
-    updateTaskStatus: (
-      state,
-      action: PayloadAction<{
-        id: number;
-        status: "pending" | "in-progress" | "completed";
-      }>
-    ) => {
-      const task = state.tasks.find((task) => task.id === action.payload.id);
-      if (task) {
-        task.status = action.payload.status;
-      }
-    },
-
-    // Delete a task
-    deleteTask: (state, action: PayloadAction<number>) => {
-      state.tasks = state.tasks.filter((task) => task.id !== action.payload);
-    },
-
-    // Set loading state
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.loading = action.payload;
-    },
-
-    // Set error state
-    setError: (state, action: PayloadAction<string | null>) => {
-      state.error = action.payload;
-    },
-
-    // Set all tasks (for initial load or refresh)
-    setTasks: (state, action: PayloadAction<Task[]>) => {
-      state.tasks = action.payload;
-    },
+      .addCase(updateTaskApi.fulfilled, (state, action) => {
+        const index = state.tasks.findIndex(
+          (t) => t._id === action.payload._id
+        );
+        if (index !== -1) state.tasks[index] = action.payload;
+      });
   },
 });
-
-export const {
-  addTask,
-  updateTask,
-  updateTaskStatus,
-  deleteTask,
-  setLoading,
-  setError,
-  setTasks,
-} = tasksSlice.actions;
 
 export default tasksSlice.reducer;

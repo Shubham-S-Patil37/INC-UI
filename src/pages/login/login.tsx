@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ForgotPassword from './forgotPassword';
 import { useAppDispatch } from '../../hooks/redux';
 import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
+import { loginUser, clearError } from '../../store/slices/authSlice';
 import useNotificationSystem from '../../components/notificationPopup';
 import type { CurrentUser } from '../../store/slices/authSlice';
 
@@ -24,65 +25,6 @@ export interface PredefinedUser {
   permissions: string[];
   createdAt: string;
 }
-
-// Predefined users with different roles
-export const predefinedUsers: PredefinedUser[] = [
-  {
-    id: 1,
-    username: 'admin',
-    email: 'admin@company.com',
-    password: 'admin123',
-    firstName: 'System',
-    lastName: 'Administrator',
-    role: 'admin',
-    permissions: ['Admin', 'Read', 'Write'],
-    createdAt: '2024-01-01'
-  },
-  {
-    id: 2,
-    username: 'john.doe',
-    email: 'john.doe@company.com',
-    password: 'user123',
-    firstName: 'John',
-    lastName: 'Doe',
-    role: 'user',
-    permissions: ['Read'],
-    createdAt: '2024-01-15'
-  },
-  {
-    id: 3,
-    username: 'jane.smith',
-    email: 'jane.smith@company.com',
-    password: 'user123',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    role: 'user',
-    permissions: ['Read', 'Write'],
-    createdAt: '2024-01-16'
-  },
-  {
-    id: 4,
-    username: 'mike.wilson',
-    email: 'mike.wilson@company.com',
-    password: 'user123',
-    firstName: 'Mike',
-    lastName: 'Wilson',
-    role: 'user',
-    permissions: ['Read'],
-    createdAt: '2024-01-20'
-  },
-  {
-    id: 5,
-    username: 'sarah.johnson',
-    email: 'sarah.johnson@company.com',
-    password: 'admin123',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    role: 'admin',
-    permissions: ['Admin', 'Read', 'Write'],
-    createdAt: '2024-01-25'
-  }
-];
 
 // Available roles
 export const userRoles: UserRole[] = [
@@ -161,7 +103,7 @@ const Login: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
       if (isSignUp) {
@@ -170,26 +112,27 @@ const Login: React.FC = () => {
       } else {
         // Dispatch login start action
         dispatch(loginStart());
+
+        const user = await dispatch(loginUser({ username: formData.username, password: formData.password }));
         
-        // Handle login - validate against predefined users
-        const user = predefinedUsers.find(
-          u => u.username === formData.username && u.password === formData.password
-        );
-        
-        if (user) {
-          showSuccess('Login Successful!', `Welcome back, ${user.firstName}! You have been logged in successfully.`);
-          
+        if (
+          user.payload &&
+          typeof user.payload === 'object' &&
+          'user' in user.payload
+        ) {
+          const user1 = (user.payload as { user: CurrentUser }).user;
+          showSuccess('Login Successful!', `Welcome back, ${user1.firstName}! You have been logged in successfully.`);
           // Create user object for Redux state
           const currentUser: CurrentUser = {
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            role: user.role as 'admin' | 'user',
-            permissions: user.permissions,
+            _id: user1._id,
+            username: user1.username,
+            email: user1.email,
+            firstName: user1.firstName,
+            lastName: user1.lastName,
+            role: user1.role as 'admin' | 'user',
+            permissions: user1.permissions,
             avatar: null,
-            createdAt: user.createdAt
+            createdAt: user1.createdAt
           };
 
           // Store user data in localStorage for session management

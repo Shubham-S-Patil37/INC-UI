@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, {useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/sidebar';
 import StatsCard from '../../components/StatsCard';
@@ -9,8 +9,13 @@ import { selectUser, selectIsAdmin } from '../../store/selectors/authSelectors';
 import { selectAllUsers } from '../../store/selectors/usersSelectors';
 import { selectAllTasks, selectUserTasks } from '../../store/selectors/tasksSelectors';
 import { logout } from '../../store/slices/authSlice';
-import { addUser, updateUser } from '../../store/slices/usersSlice';
-import { addTask, updateTask, updateTaskStatus } from '../../store/slices/tasksSlice';
+import { 
+  fetchUsers, 
+  createUser, 
+  updateUserAPI, 
+  deleteUserAPI 
+} from '../../store/slices/usersSlice';
+import { createTask, fetchTasks, updateTaskApi } from '../../store/slices/tasksSlice';
 import useNotificationSystem from '../../components/notificationPopup';
 import { 
   HiCamera, 
@@ -37,7 +42,9 @@ const Dashboard: React.FC = () => {
   
   const users = useAppSelector(selectAllUsers);
   const tasks = useAppSelector(selectAllTasks);
-  const userTasks = useAppSelector(selectUserTasks(currentUser?.id || 0));
+  const userTasks = useAppSelector(selectUserTasks(currentUser?._id || 0));
+
+  console.log('Current tasks:', userTasks);
 
   const [profileFormData, setProfileFormData] = useState({
     firstName: currentUser?.firstName || '',
@@ -48,7 +55,7 @@ const Dashboard: React.FC = () => {
     newImage: null as File | null
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentUser) {
       setProfileFormData({
         firstName: currentUser.firstName || '',
@@ -60,6 +67,16 @@ const Dashboard: React.FC = () => {
       });
     }
   }, [currentUser]);
+
+  // Fetch users when component mounts
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  useEffect(() => {
+    debugger
+  dispatch(fetchTasks());
+}, [dispatch]); 
 
   const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -215,22 +232,26 @@ const Dashboard: React.FC = () => {
         imageUrl = await resizeImage(formData.image);
       }
 
-      const newUser: User = {
-        id: selectedUser ? selectedUser.id : Date.now(),
+      const userData = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
         image: imageUrl || selectedUser?.image,
-        createdAt: selectedUser ? selectedUser.createdAt : new Date().toISOString().split('T')[0]
       };
 
       if (selectedUser) {
-        dispatch(updateUser(newUser));
+        // Update existing user via API
+        await dispatch(updateUserAPI({ 
+          ...userData, 
+          id: selectedUser.id,
+          createdAt: selectedUser.createdAt 
+        })).unwrap();
         showSuccess('User Updated!', 'User information has been updated successfully.');
         setShowEditUserModal(false);
       } else {
-        dispatch(addUser(newUser));
+        // Create new user via API
+        await dispatch(createUser(userData)).unwrap();
         showSuccess('User Added!', 'New user has been added successfully.');
         setShowAddUserModal(false);
       }
@@ -238,7 +259,18 @@ const Dashboard: React.FC = () => {
       setFormData({ name: '', email: '', phone: '', role: '', image: null });
       setSelectedUser(null);
     } catch (error) {
-      showError('Error', 'Something went wrong. Please try again.');
+      showError('Error', error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await dispatch(deleteUserAPI(userId)).unwrap();
+        showSuccess('User Deleted!', 'User has been deleted successfully.');
+      } catch (error) {
+        showError('Error', error instanceof Error ? error.message : 'Failed to delete user.');
+      }
     }
   };
 
@@ -271,38 +303,38 @@ const Dashboard: React.FC = () => {
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!taskFormData.title || !taskFormData.description || !taskFormData.assignedTo || !taskFormData.dueDate) {
+    if (!taskFormData.title || !taskFormData.description || !taskFormData.dueDate) {
       showError('Validation Error', 'Please fill in all required fields.');
       return;
     }
 
     try {
-      const assignedUser = users.find(u => u.id === parseInt(taskFormData.assignedTo));
-      if (!assignedUser) {
-        showError('Error', 'Selected user not found.');
-        return;
-      }
+      // const assignedUser = users.find(u => u.id === parseInt(taskFormData.assignedTo));
+      // if (!assignedUser) {
+      //   showError('Error', 'Selected user not found.');
+      //   return;
+      // }
 
       const newTask: Task = {
-        id: selectedTask ? selectedTask.id : Date.now(),
+        // _id: selectedTask ? selectedTask._id : Date.now(),
         title: taskFormData.title,
         description: taskFormData.description,
         assignedTo: parseInt(taskFormData.assignedTo),
-        assignedBy: currentUser?.id || 1,
-        assignedToName: assignedUser.name,
-        assignedByName: currentUser?.firstName + ' ' + currentUser?.lastName || 'Unknown',
+        assignedBy: currentUser?._id || 1,
         status: selectedTask ? selectedTask.status : 'pending',
         priority: taskFormData.priority,
         dueDate: taskFormData.dueDate,
-        createdAt: selectedTask ? selectedTask.createdAt : new Date().toISOString().split('T')[0]
+        createdAt: selectedTask ? selectedTask.createdAt : new Date().toISOString().split('T')[0],
       };
 
       if (selectedTask) {
-        dispatch(updateTask(newTask));
+        await dispatch(updateTaskApi(newTask)).unwrap();
+        await dispatch(fetchTasks()); // <-- Add this line to refresh the task list
         showSuccess('Task Updated!', 'Task has been updated successfully.');
         setShowEditTaskModal(false);
       } else {
-        dispatch(addTask(newTask));
+        await dispatch(createTask(newTask)).unwrap();
+        await dispatch(fetchTasks());
         showSuccess('Task Created!', 'New task has been created and assigned successfully.');
         setShowAddTaskModal(false);
       }
@@ -326,8 +358,8 @@ const Dashboard: React.FC = () => {
     setShowEditTaskModal(true);
   };
 
-  const handleTaskStatusChange = (taskId: number, newStatus: 'pending' | 'in-progress' | 'completed') => {
-    dispatch(updateTaskStatus({ id: taskId, status: newStatus }));
+  const handleTaskStatusChange = (taskId: any, newStatus: 'pending' | 'in-progress' | 'completed') => {
+    // dispatch(updateTaskStatus({ id: taskId, status: newStatus }));
     showSuccess('Status Updated!', 'Task status has been updated successfully.');
   };
 
@@ -659,7 +691,7 @@ const Dashboard: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <StatsCard
                 title="Tasks Assigned"
-                value={tasks.filter(task => task.assignedTo === currentUser?.id).length}
+                value={tasks.filter(task => task.assignedTo === currentUser?._id).length}
                 variant="purple"
               />
             </div>
@@ -905,9 +937,9 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {userTasks.map((task) => (
+                {tasks.map((task) => (
                   <tr 
-                    key={task.id} 
+                    key={task._id} 
                     className="hover:bg-gray-50 transition-colors duration-150"
                   >
                     <td className="px-6 py-4">
@@ -924,9 +956,9 @@ const Dashboard: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
                         value={task.status}
-                        onChange={(e) => handleTaskStatusChange(task.id, e.target.value as any)}
+                        onChange={(e) => handleTaskStatusChange(task?._id, e.target.value as any)}
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border-0 ${getStatusColor(task.status)}`}
-                        disabled={!canCreateTasks() && task.assignedTo !== currentUser?.id}
+                        disabled={!canCreateTasks() && task.assignedTo !== currentUser?._id}
                       >
                         <option value="pending">Pending</option>
                         <option value="in-progress">In Progress</option>
