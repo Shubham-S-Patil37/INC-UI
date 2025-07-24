@@ -127,13 +127,11 @@ const Login: React.FC = () => {
         dispatch(loginStart());
 
         const user = await dispatch(loginUser({ username: formData.username, password: formData.password }));
-        debugger
         if (
           user.payload &&
           typeof user.payload === 'object' &&
           'user' in user.payload
         ) {
-          debugger
           const user1 = (user.payload as { user: CurrentUser }).user;
           showSuccess('Login Successful!', `Welcome back, ${user1.firstName}! You have been logged in successfully.`);
           // Create user object for Redux state

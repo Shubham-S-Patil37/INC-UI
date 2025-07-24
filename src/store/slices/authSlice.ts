@@ -55,6 +55,60 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/api/auth/forgot-password",
+        { email },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      return response.data; // You can adjust this based on your API response
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+export const verifyOtp = createAsyncThunk(
+  "auth/verifyOtp",
+  async (
+    { email, otp }: { email: string; otp: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/api/auth/verify-otp",
+        { email, otp },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      return response.data; // Adjust as needed for your API response
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
+export const updatePassword = createAsyncThunk(
+  "auth/updatePassword",
+  async (
+    { email, newPassword }: { email: string; newPassword: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/api/auth/update-password",
+        { email, newPassword },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      return response.data; // Adjust as needed for your API response
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import type { FC } from 'react';
+import { useDispatch } from 'react-redux';
 import useNotificationSystem from '../../components/notificationPopup';
+import { forgotPassword, updatePassword, verifyOtp } from '../../store/slices/authSlice';
+import { useAppDispatch } from '../../hooks/redux';
 
 interface ForgotPasswordProps {
   onBackToLogin: () => void;
@@ -16,6 +19,7 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBackToLogin }) => {
     showInfo,
     removeNotification
   } = useNotificationSystem();
+   const dispatch = useAppDispatch();
   
   useEffect(() => {
   }, []);
@@ -82,22 +86,40 @@ const ForgotPassword: FC<ForgotPasswordProps> = ({ onBackToLogin }) => {
 
     try {
       if (step === 1) {
-        // Send OTP to email
+        const email: string = formData.email.trim();
+         await dispatch(forgotPassword(email));
+      
         await new Promise(resolve => setTimeout(resolve, 1500));
         showInfo('Verification Code Sent', `We've sent a 6-digit code to ${formData.email}`);
         setStep(2);
       } else if (step === 2) {
-        // Verify OTP
+        const resp = await dispatch(verifyOtp({ email: formData.email, otp: formData.otp }));
         await new Promise(resolve => setTimeout(resolve, 1000));
-        showSuccess('Code Verified', 'Your verification code is valid. Please create a new password.');
-        setStep(3);
+
+        if(resp.payload && resp.payload.success) {
+          showSuccess('Code Verified', 'Your verification code is valid. Please create a new password.');
+          setStep(3);
+        }
+        else {
+          showError('Invalid Code', 'The verification code you entered is incorrect. Please try again.');
+          return;
+        }
       } else if (step === 3) {
-        // Reset password
+       
+        const { email, newPassword } = formData;
+        const updateResp = await dispatch(updatePassword({ email, newPassword }));
+        if (updateResp.payload && updateResp.payload.success) {
+          showSuccess('Password Updated', 'Your password has been successfully updated.');
+          setTimeout(() => {
+            onBackToLogin();
+          }, 2000);
+        } else {
+          showError('Update Failed', 'There was an error updating your password. Please try again.');
+          return;
+        }
         await new Promise(resolve => setTimeout(resolve, 1000));
         showSuccess('Password Reset Successfully!', 'Your password has been updated. You can now login with your new password.');
-        setTimeout(() => {
-          onBackToLogin();
-        }, 2000);
+     
       }
     } catch (error) {
       showError('Something went wrong', 'Please try again or contact support if the problem persists.');
