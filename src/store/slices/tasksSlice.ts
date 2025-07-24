@@ -7,6 +7,8 @@ import type { RootState } from "./../../store"; // 👈 Adjust this path based o
 export interface Task {
   _id?: number;
   title: string;
+  userName?: string; // Optional, if you want to display the username
+  password?: string; // Optional, if you want to handle password in tasks
   description: string;
   assignedTo: number;
   assignedBy: number;
@@ -113,7 +115,6 @@ const tasksSlice = createSlice({
       })
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.loading = false;
-        debugger;
         state.tasks = action.payload;
       })
       .addCase(fetchTasks.rejected, (state, action) => {

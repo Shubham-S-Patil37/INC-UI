@@ -70,11 +70,11 @@ const Dashboard: React.FC = () => {
 
   // Fetch users when component mounts
   useEffect(() => {
+    debugger
     dispatch(fetchUsers());
   }, [dispatch]);
 
   useEffect(() => {
-    debugger
   dispatch(fetchTasks());
 }, [dispatch]); 
 
@@ -136,6 +136,8 @@ const Dashboard: React.FC = () => {
   
   const [taskFormData, setTaskFormData] = useState({
     title: '',
+    userName: '',
+    password: '',
     description: '',
     assignedTo: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
@@ -155,7 +157,9 @@ const Dashboard: React.FC = () => {
     email: '',
     phone: '',
     role: '',
-    image: null as File | null
+    image: null as File | null,
+    userName: "",
+    password: ""
   });
 
   const profileImageInputRef = useRef<HTMLInputElement>(null);
@@ -231,20 +235,22 @@ const Dashboard: React.FC = () => {
       if (formData.image && formData.image.type.startsWith('image/')) {
         imageUrl = await resizeImage(formData.image);
       }
-
+      debugger
       const userData = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
         image: imageUrl || selectedUser?.image,
+        userName: formData.userName,
+        password: formData.password
       };
 
       if (selectedUser) {
         // Update existing user via API
         await dispatch(updateUserAPI({ 
           ...userData, 
-          id: selectedUser.id,
+          _id: selectedUser._id,
           createdAt: selectedUser.createdAt 
         })).unwrap();
         showSuccess('User Updated!', 'User information has been updated successfully.');
@@ -256,7 +262,7 @@ const Dashboard: React.FC = () => {
         setShowAddUserModal(false);
       }
 
-      setFormData({ name: '', email: '', phone: '', role: '', image: null });
+      setFormData({ name: '', email: '', phone: '', role: '', image: null, userName: '', password: '' });
       setSelectedUser(null);
     } catch (error) {
       showError('Error', error instanceof Error ? error.message : 'Something went wrong. Please try again.');
@@ -277,11 +283,12 @@ const Dashboard: React.FC = () => {
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setFormData({
-      name: user.name,
+      name: user.name ?? '',
       email: user.email,
       phone: user.phone,
       role: user.role,
-      image: null
+      image: null,
+      userName: '', password: ''
     });
     setShowEditUserModal(true);
   };
@@ -318,6 +325,7 @@ const Dashboard: React.FC = () => {
       const newTask: Task = {
         // _id: selectedTask ? selectedTask._id : Date.now(),
         title: taskFormData.title,
+
         description: taskFormData.description,
         assignedTo: parseInt(taskFormData.assignedTo),
         assignedBy: currentUser?._id || 1,
@@ -339,7 +347,7 @@ const Dashboard: React.FC = () => {
         setShowAddTaskModal(false);
       }
 
-      setTaskFormData({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
+      setTaskFormData({ title: '', userName: '', password: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
       setSelectedTask(null);
     } catch (error) {
       showError('Error', 'Something went wrong. Please try again.');
@@ -350,6 +358,8 @@ const Dashboard: React.FC = () => {
     setSelectedTask(task);
     setTaskFormData({
       title: task.title,
+      userName: task.assignedToName || '',
+      password: task.password|| "", // Assuming password is not needed for task editing
       description: task.description,
       assignedTo: task.assignedTo.toString(),
       priority: task.priority,
@@ -367,7 +377,7 @@ const Dashboard: React.FC = () => {
     setShowAddTaskModal(false);
     setShowEditTaskModal(false);
     setSelectedTask(null);
-    setTaskFormData({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
+    setTaskFormData({ title: '', userName: '', password: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
   };
 
   const exportToCSV = () => {
@@ -375,7 +385,7 @@ const Dashboard: React.FC = () => {
     const csvContent = [
       headers.join(','),
       ...users.map(user => [
-        user.id,
+        user._id,
         `"${user.name}"`,
         user.email,
         user.phone,
@@ -401,7 +411,7 @@ const Dashboard: React.FC = () => {
     setShowAddUserModal(false);
     setShowEditUserModal(false);
     setSelectedUser(null);
-    setFormData({ name: '', email: '', phone: '', role: '', image: null });
+    setFormData({ name: '', email: '', phone: '', role: '', image: null, userName: '', password: '' });
   };
 
   const handleLogout = () => {
@@ -822,7 +832,7 @@ const Dashboard: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
                 <tr 
-                  key={user.id} 
+                  key={user._id} 
                   className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
                   onClick={() => handleEditUser(user)}
                 >
@@ -833,13 +843,13 @@ const Dashboard: React.FC = () => {
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                           <span className="text-white font-medium text-sm">
-                            {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            {user.firstName?.toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">ID: {user.id}</div>
+                        <div className="text-sm font-medium text-gray-900">{user.firstName}</div>
+                        <div className="text-sm text-gray-500">ID: {user._id}</div>
                       </div>
                     </div>
                   </td>

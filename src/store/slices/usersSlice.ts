@@ -1,9 +1,12 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import axios from "axios";
 
 export interface User {
-  id: number;
-  name: string;
+  _id?: number;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone: string;
   role: string;
@@ -17,17 +20,22 @@ interface UsersState {
   error: string | null;
 }
 
-// Async thunks for API calls
+const BASE_URL = "http://localhost:8000/api/users/";
+const authHeaders = (token: string) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+
 export const fetchUsers = createAsyncThunk(
   "users/fetchUsers",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch("/api/users");
-      if (!response.ok) {
-        throw new Error("Failed to fetch users");
-      }
-      const data = await response.json();
-      return data;
+      const token = localStorage.getItem("accessToken");
+      if (!token) return rejectWithValue("No access token found");
+      const res = await axios.get(BASE_URL, authHeaders(token));
+      debugger;
+      return res.data.data;
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Unknown error"
@@ -40,18 +48,19 @@ export const createUser = createAsyncThunk(
   "users/createUser",
   async (userData: Omit<User, "id" | "createdAt">, { rejectWithValue }) => {
     try {
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to create user");
-      }
-      const data = await response.json();
-      return data;
+      const token = localStorage.getItem("accessToken");
+      if (!token) return rejectWithValue("No access token found");
+
+      // const response = await fetch(BASE_URL, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify(userData),
+      // });
+
+      const res = await axios.post(BASE_URL, userData, authHeaders(token));
+      return res.data.data;
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Unknown error"
@@ -64,7 +73,7 @@ export const updateUserAPI = createAsyncThunk(
   "users/updateUser",
   async (user: User, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/users/${user.id}`, {
+      const response = await fetch(`${BASE_URL}/${user._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -119,14 +128,14 @@ const usersSlice = createSlice({
     },
     updateUser: (state, action: PayloadAction<User>) => {
       const index = state.users.findIndex(
-        (user) => user.id === action.payload.id
+        (user) => user._id === action.payload._id
       );
       if (index !== -1) {
         state.users[index] = action.payload;
       }
     },
     deleteUser: (state, action: PayloadAction<number>) => {
-      state.users = state.users.filter((user) => user.id !== action.payload);
+      state.users = state.users.filter((user) => user._id !== action.payload);
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -181,7 +190,7 @@ const usersSlice = createSlice({
       .addCase(updateUserAPI.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.users.findIndex(
-          (user) => user.id === action.payload.id
+          (user) => user._id === action.payload.id
         );
         if (index !== -1) {
           state.users[index] = action.payload;
@@ -200,7 +209,7 @@ const usersSlice = createSlice({
       })
       .addCase(deleteUserAPI.fulfilled, (state, action) => {
         state.loading = false;
-        state.users = state.users.filter((user) => user.id !== action.payload);
+        state.users = state.users.filter((user) => user._id !== action.payload);
         state.error = null;
       })
       .addCase(deleteUserAPI.rejected, (state, action) => {

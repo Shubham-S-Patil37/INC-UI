@@ -12,6 +12,8 @@ interface UserModalProps {
     phone: string;
     role: string;
     image: File | null;
+    password: string;
+    userName: string; // <-- Add this line
   };
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -192,6 +194,42 @@ const UserModal: React.FC<UserModalProps> = ({
               </div>
             </div>
 
+            {/* Username Section */}
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                Username *
+              </label>
+              <input
+                type="text"
+                id="userName"
+                name="userName"
+                value={formData.userName}
+                onChange={onInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                placeholder="Enter username"
+                required
+              />
+            </div>
+
+            {/* Password Section - Only for Add User */}
+            {!isEdit && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={onInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                  placeholder="Enter password"
+                  required
+                />
+              </div>
+            )}
+
             {/* Account Information Section */}
             {selectedUser && (
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
@@ -204,7 +242,7 @@ const UserModal: React.FC<UserModalProps> = ({
                       User ID
                     </label>
                     <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
-                      #{selectedUser.id}
+                      #{selectedUser._id}
                     </div>
                   </div>
                   <div>
